@@ -90,6 +90,10 @@ local sync = function (src, dest, config)
             table.insert(opts, opt)
         end
     end
+    if config.port then
+        local opt = string.format("-e 'ssh -p %s'", config.port)
+        table.insert(opts, opt)
+    end
     local cmd = string.format(
         "rsync %s %s %s", table.concat(opts, " "), src, dest
     )

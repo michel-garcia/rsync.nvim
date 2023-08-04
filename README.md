@@ -28,6 +28,7 @@ Structure of the local config file:
 ```lua
 return {
     host = "example.com",
+    port = 2222,
     user = "admin",
     pass = "thereisnocowlevel",
     path = "/home/admin/public_html/",
