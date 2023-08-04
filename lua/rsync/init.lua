@@ -55,7 +55,7 @@ M.sync_up = function (delete)
     if not config then
         return
     end
-    local src = vim.loop.cwd() .. helpers.get_separator
+    local src = vim.loop.cwd() .. helpers.get_separator()
     local dest = helpers.config_to_remote(config)
     config.delete = delete or false
     local sync = require("rsync.sync")
