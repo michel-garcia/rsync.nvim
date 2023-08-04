@@ -2,144 +2,12 @@ local M = {}
 
 local loaded = false
 
-local sep = vim.loop.os_uname().sysname == "Windows" and "\\" or "/"
-
-local errors = {
-    [1] = "Syntax or usage error",
-    [2] = "Protocol incompatibility",
-    [3] = "Errors selecting input/output files, dirs",
-    [4] = "Requested action not supported",
-    [5] = "Error starting client-server protocol",
-    [6] = "Daemon unable to append to log-file",
-    [10] = "Error in socket I/O",
-    [11] = "Error in file I/O",
-    [12] = "Error in rsync protocol data stream",
-    [13] = "Errors with program diagnostics",
-    [14] = "Errors in IPC code",
-    [20] = "Received SIGUSR1 or SIGINT",
-    [21] = "Some error returned bt waitpid()",
-    [22] = "Error allocating core memory buffers",
-    [23] = "Partial transfer due to error",
-    [24] = "Partial transfer due to vanished source files",
-    [25] = "The --max-delete limit stopped deletions",
-    [30] = "Timeout in data send/receive",
-    [35] = "Timeout waiting for daemon connection"
+M.config = {
+    max_concurrent_jobs = 1,
+    on_update = nil
 }
 
-local bail = function (message, level)
-    vim.notify(string.format("Rsync: %s", message), level)
-end
-
-local get_config = function ()
-    local filename = table.concat({
-        vim.loop.cwd(), ".rsync.lua"
-    }, sep)
-    local ok, config = pcall(dofile, filename)
-    if not ok then
-        bail("missing or invalid config", "error")
-        return
-    end
-    if not config.host then
-        bail("missing 'host' in config", "error")
-        return
-    end
-    if not config.user then
-        bail("missing 'user' in config", "error")
-        return
-    end
-    if not config.path then
-        bail("missing 'path' in config", "error")
-        return
-    end
-    return config
-end
-
-local config_to_remote = function (config)
-    return string.format("%s@%s:%s", config.user, config.host, config.path)
-end
-
-local sync = function (src, dest, config)
-    if vim.fn.executable("rsync") ~= 1 then
-        bail("rsync is not a valid executable", "error")
-        return
-    end
-    if M.current.job_id then
-        local statuses = vim.fn.jobwait({ M.current.job_id }, 10000)
-        if statuses[1] < 0 then
-            bail("job in progress", "warn")
-            return
-        end
-    end
-    local opts = { "-av", "--info=progress2" }
-    if config.delete then
-        table.insert(opts, "--delete")
-    end
-    if not config.exclude then
-        config.exclude = {}
-    end
-    table.insert(config.exclude, ".rsync.*")
-    if config.exclude then
-        for _, pattern in ipairs(config.exclude) do
-            local opt = string.format("--exclude %s", pattern)
-            table.insert(opts, opt)
-        end
-    end
-    if config.include then
-        for _, pattern in ipairs(config.include) do
-            local opt = string.format("--include %s", pattern)
-            table.insert(opts, opt)
-        end
-    end
-    if config.port then
-        local opt = string.format("-e 'ssh -p %s'", config.port)
-        table.insert(opts, opt)
-    end
-    local cmd = string.format(
-        "rsync %s %s %s", table.concat(opts, " "), src, dest
-    )
-    if config.pass then
-        if vim.fn.executable("sshpass") ~= 1 then
-            bail("sshpass is not a valid executable", "error")
-            return
-        end
-        cmd = string.format("sshpass -p '%s' %s", config.pass, cmd)
-    end
-    M.current.job_id = vim.fn.jobstart(cmd, {
-        capture_stdout = true,
-        on_exit = function (_, code)
-            M.current.job_id = nil
-            if code == 0 then
-                bail("job complete!")
-                return
-            end
-            local error = errors[code] or "Unknown error"
-            bail(error, "error")
-        end,
-        on_stdout = function (_, data)
-            for _, line in ipairs(data) do
-                if line ~= "" then
-                    local percentage = line:match("(%d+)%%")
-                    if percentage ~= nil then
-                        M.current.status.percentage = tonumber(percentage)
-                    end
-                end
-            end
-        end
-    })
-end
-
-M.current = {
-    job_id = nil,
-    status = {
-        percentage = 0
-    }
-}
-
-M.setup = function ()
-    if loaded then
-        return
-    end
-    loaded = true
+local setup_commands = function ()
     vim.api.nvim_create_user_command("SyncDown", function (opts)
         local delete = opts.args == "delete"
         M.sync_down(delete)
@@ -148,40 +16,63 @@ M.setup = function ()
         local delete = opts.args == "delete"
         M.sync_up(delete)
     end, { nargs = "?" })
-    vim.api.nvim_create_user_command("SyncStop", function ()
-        M.sync_stop()
+    vim.api.nvim_create_user_command("SyncStop", function (opts)
+        if M.config.max_concurrent_jobs == 1 then
+            return M.sync_stop_all()
+        end
+        M.sync_stop(opts.args)
+    end, { nargs = "?" })
+    vim.api.nvim_create_user_command("SyncStopAll", function ()
+        M.sync_stop_all()
     end, {})
 end
 
+M.setup = function (config)
+    if loaded then
+        return
+    end
+    loaded = true
+    M.config = vim.tbl_extend("force", M.config, config or {})
+    setup_commands()
+end
+
 M.sync_down = function (delete)
-    local config = get_config()
+    local helpers = require("rsync.helpers")
+    local config = helpers.get_config()
     if not config then
         return
     end
-    local src = config_to_remote(config)
-    local dest = vim.loop.cwd() .. sep
+    local src = helpers.config_to_remote(config)
+    local dest = vim.loop.cwd() .. helpers.get_separator()
     config.delete = delete or false
-    sync(src, dest, config)
+    local sync = require("rsync.sync")
+    sync.exec(src, dest, config)
 end
 
 M.sync_up = function (delete)
-    local config = get_config()
+    local helpers = require("rsync.helpers")
+    local config = helpers.get_config()
     if not config then
         return
     end
-    local src = vim.loop.cwd() .. sep
-    local dest = config_to_remote(config)
+    local src = vim.loop.cwd() .. helpers.get_separator
+    local dest = helpers.config_to_remote(config)
     config.delete = delete or false
-    sync(src, dest, config)
+    local sync = require("rsync.sync")
+    sync.exec(src, dest, config)
 end
 
-M.sync_stop = function ()
-    if not M.current.job_id then
-        return
+M.sync_stop = function (job_id)
+    local sync = require("rsync.sync")
+    sync.stop(job_id)
+end
+
+M.sync_stop_all = function ()
+    local sync = require("rsync.sync")
+    local jobs = sync.get_jobs()
+    for _, job in ipairs(jobs) do
+        sync.stop(job.id)
     end
-    vim.fn.jobstop(M.current.job_id)
-    M.current.job_id = nil
-    bail("job stopped")
 end
 
 return M
