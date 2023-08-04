@@ -28,9 +28,13 @@ M.get_jobs = function ()
     return jobs
 end
 
-M.exec = function (src, dest, config)
+M.exec = function (config)
     if vim.fn.executable("rsync") ~= 1 then
         notifications.error("rsync is not a valid executable")
+        return
+    end
+    if not config.src or not config.dest then
+        notifications.error("missing path in command")
         return
     end
     if jobs:count() == rsync.config.max_concurrent_jobs then
@@ -62,7 +66,7 @@ M.exec = function (src, dest, config)
         table.insert(opts, opt)
     end
     local cmd = string.format(
-        "rsync %s %s %s", table.concat(opts, " "), src, dest
+        "rsync %s %s %s", table.concat(opts, " "), config.src, config.dest
     )
     if config.pass then
         if vim.fn.executable("sshpass") ~= 1 then
