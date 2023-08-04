@@ -148,6 +148,9 @@ M.setup = function ()
         local delete = opts.args == "delete"
         M.sync_up(delete)
     end, { nargs = "?" })
+    vim.api.nvim_create_user_command("SyncStop", function ()
+        M.sync_stop()
+    end, {})
 end
 
 M.sync_down = function (delete)
@@ -170,6 +173,15 @@ M.sync_up = function (delete)
     local dest = config_to_remote(config)
     config.delete = delete or false
     sync(src, dest, config)
+end
+
+M.sync_stop = function ()
+    if not M.current.job_id then
+        return
+    end
+    vim.fn.jobstop(M.current.job_id)
+    M.current.job_id = nil
+    bail("job stopped")
 end
 
 return M
