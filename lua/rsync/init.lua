@@ -4,7 +4,8 @@ local loaded = false
 
 M.config = {
     max_concurrent_jobs = 1,
-    on_update = nil
+    on_update = nil,
+    sync_up_on_write = false
 }
 
 local setup_commands = function ()
@@ -31,6 +32,24 @@ local setup_commands = function ()
     end, {})
 end
 
+local setup_autocmds = function ()
+    local group = vim.api.nvim_create_augroup("RsyncAutocmds", {
+        clear = true
+    })
+    vim.api.nvim_create_autocmd("BufWritePost", {
+        callback = function ()
+            if M.config.sync_up_on_write then
+                local helpers = require("rsync.helpers")
+                local config = helpers.get_config()
+                if config and config.host and config.user and config.path then
+                    M.sync_up(config)
+                end
+            end
+        end,
+        group = group
+    })
+end
+
 M.setup = function (config)
     if loaded then
         return
@@ -38,6 +57,7 @@ M.setup = function (config)
     loaded = true
     M.config = vim.tbl_extend("force", M.config, config or {})
     setup_commands()
+    setup_autocmds()
 end
 
 M.sync_down = function (config)
