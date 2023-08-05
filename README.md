@@ -4,7 +4,10 @@ An rsync wrapper for Neovim fully written in Lua. This is currently a WIP, more 
 
 ## Installation
 
-This plugin requires [rsync](https://github.com/WayneD/rsync) to be installed. You must also install [sshpass](https://sourceforge.net/projects/sshpass/) **only if the remote connection requires a password**.
+Dependencies:
+
+- [rsync](https://github.com/WayneD/rsync)
+- [sshpass](https://sourceforge.net/projects/sshpass/) - required only if using remote password
 
 Using [Lazy](https://github.com/folke/lazy.nvim):
 
@@ -12,26 +15,31 @@ Using [Lazy](https://github.com/folke/lazy.nvim):
 {
     "michel-garcia/rsync.nvim",
     config = function ()
-        require("rsync").setup()
+        require("rsync").setup({
+            max_concurrent_jobs = 1,
+            on_update = function (job)
+                -- your custom callback
+            end
+        })
     end
 }
 ```
 
-Calling `setup` initializes the plugin. Currently this only registers two commands. Refer to [Usage](#usage) below for more information about these commands.
+Calling `setup` registers the [Commands](#commands) besides overriding the plugin configuration.
 
 ## Usage
 
-First create a file `.rsync.lua`. This will be your local configuration and must exist in the root directory of your project.
+Create a file `.rsync.lua` in the root directory of your project. This will serve as your local configuration.
 
 Structure of the local config file:
 
 ```lua
 return {
-    host = "example.com",
+    host = "example.com", -- required
     port = 2222,
-    user = "admin",
+    user = "admin", -- required
     pass = "thereisnocowlevel",
-    path = "/home/admin/public_html/",
+    path = "/home/admin/public_html/", -- required
     exclude = {
         ".htaccess",
         "uploads/"
@@ -39,11 +47,15 @@ return {
 }
 ```
 
-Once that has been set up you are ready to use the following commands:
+This configuration file (`.rsync.lua`) will not be uploaded/downloaded as it is automatically added to the exclusion list.
 
-- `:SyncDown` will download remote files/dirs.
-- `:SyncUp` will upload local files/dirs.
+### Commands
 
-Both commands accept `delete` as an argument which maps to `--delete` when executing `rsync`. **Use with caution as this may result in data loss**. Refer to the manpages for `rsync` for more information.
+| Command | Description |
+| --- | --- |
+| `SyncDown [delete?]` | Downloads remote files/dirs |
+| `SyncUp [delete?]` | Uploads local files/dirs |
+| `SyncStop [job_id]` | Stops a sync job |
+| `SyncStopAll` | Stops all sync jobs |
 
-The local configuration file (`.rsync.lua`) will not be uploaded/downloaded as it is automatically added to the exclusion list.
+Both `SyncDown` and `SyncUp` accept `delete` as an **optional** argument which maps to `--delete` when executing `rsync`. **Use with caution as this could potentially result in data loss**. Refer to the manpages for `rsync` for more information.
