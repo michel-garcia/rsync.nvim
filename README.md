@@ -19,19 +19,17 @@ Using [Lazy](https://github.com/folke/lazy.nvim):
             max_concurrent_jobs = 1,
             on_update = function (job)
                 -- your custom callback
-            end
+                -- job is a table containing: id, status, and percentage
+            end,
+            sync_up_on_write = false
         })
     end
 }
 ```
 
-Calling `setup` registers the [Commands](#commands) besides overriding the plugin configuration.
-
 ## Usage
 
-Create a file `.rsync.lua` in the root directory of your project. This will serve as your local configuration.
-
-Structure of the local config file:
+Create a file `.rsync.lua` in the root directory of your project:
 
 ```lua
 return {
@@ -47,7 +45,7 @@ return {
 }
 ```
 
-This configuration file (`.rsync.lua`) will not be uploaded/downloaded as it is automatically added to the exclusion list.
+This config file (`.rsync.lua`) will not be uploaded/downloaded as it is automatically added to the exclusion list.
 
 ### Commands
 
