@@ -23,7 +23,7 @@ local setup_commands = function ()
     end, { nargs = "?" })
     vim.api.nvim_create_user_command("SyncStop", function ()
         M.sync_stop()
-    end)
+    end, {})
 end
 
 local setup_autocmds = function ()
