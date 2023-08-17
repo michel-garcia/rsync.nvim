@@ -72,10 +72,12 @@ M.start = function (self)
 end
 
 M.stop = function (self)
+    self.status = "stopping"
     return vim.fn.jobstop(self.id)
 end
 
 M.on_exit = function (self, code)
+    self.status = self.status == "stopping" and "stopped" or "completed"
     M.current = nil
 end
 
