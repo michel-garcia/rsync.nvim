@@ -80,7 +80,7 @@ M.on_exit = function (self, code)
 end
 
 M.on_stdout = function (self, data)
-    self.status = "starting"
+    self.status = "syncing"
     for _, line in ipairs(data) do
         if line ~= "" then
             local percentage = line:match("(%d+)%%")
