@@ -10,17 +10,19 @@ M.config = {
 
 local setup_commands = function ()
     vim.api.nvim_create_user_command("SyncDown", function (opts)
-        local helpers = require("rsync.helpers")
-        local config = helpers.get_config()
-        config.delete = opts.args == "delete"
-        M.sync_down(config)
+        local delete = opts.args == "delete"
+        M.sync_down(delete)
     end, { nargs = "?" })
     vim.api.nvim_create_user_command("SyncUp", function (opts)
-        local helpers = require("rsync.helpers")
-        local config = helpers.get_config()
-        config.delete = opts.args == "delete"
-        M.sync_up(config)
+        local delete = opts.args == "delete"
+        M.sync_up(delete)
     end, { nargs = "?" })
+    vim.api.nvim_create_user_command("SyncCurDown", function ()
+        M.sync_current_down()
+    end, {})
+    vim.api.nvim_create_user_command("SyncCurUp", function ()
+        M.sync_current_up()
+    end, {})
     vim.api.nvim_create_user_command("SyncStop", function ()
         M.sync_stop()
     end, {})
@@ -33,10 +35,10 @@ local setup_autocmds = function ()
     vim.api.nvim_create_autocmd("BufWritePost", {
         callback = function ()
             if M.config.sync_up_on_write then
-                local helpers = require("rsync.helpers")
-                local config = helpers.get_config()
-                if config and config.host and config.user and config.path then
-                    M.sync_up(config)
+                local Config = require("rsync.config")
+                local config = Config.get()
+                if config then
+                    M.sync_current_up()
                 end
             end
         end,
@@ -54,29 +56,87 @@ M.setup = function (config)
     setup_autocmds()
 end
 
-M.sync_down = function (config)
-    if not config or not config.host or not config.user or not config.path then
+M.sync_down = function (delete)
+    local Config = require("rsync.config")
+    local config = Config.get()
+    if not config then
         local notifications = require("rsync.notifications")
         notifications.error("invalid config")
         return
     end
-    local helpers = require("rsync.helpers")
-    config.src = helpers.config_to_remote(config)
-    config.dest = vim.loop.cwd() .. helpers.get_separator()
+    config.src = config:get_remote_path() .. Config.sep
+    config.dest = vim.loop.cwd() .. Config.sep
+    config.delete = delete
     local Job = require("rsync.job")
+    if Job.current then
+        Job.current:stop()
+    end
     Job(config):start()
 end
 
-M.sync_up = function (config)
+M.sync_up = function (delete)
+    local Config = require("rsync.config")
+    local config = Config.get()
     if not config or not config.host or not config.user or not config.path then
         local notifications = require("rsync.notifications")
         notifications.error("invalid config")
         return
     end
-    local helpers = require("rsync.helpers")
-    config.src = vim.loop.cwd() .. helpers.get_separator()
-    config.dest = helpers.config_to_remote(config)
+    config.src = vim.loop.cwd() .. Config.sep
+    config.dest = config:get_remote_path() .. Config.sep
+    config.delete = delete
     local Job = require("rsync.job")
+    if Job.current then
+        Job.current:stop()
+    end
+    Job(config):start()
+end
+
+M.sync_current_down = function ()
+    local Config = require("rsync.config")
+    local config = Config.get()
+    if not config then
+        return
+    end
+    local path = vim.fn.expand("%:.")
+    local stat = vim.loop.fs_stat(path)
+    if not stat or stat.type ~= "file" then
+        return
+    end
+    config.src = table.concat({
+        config:get_remote_path(), path
+    }, Config.sep)
+    config.dest = table.concat({
+        vim.loop.cwd(), path
+    }, Config.sep)
+    local Job = require("rsync.job")
+    if Job.current then
+        Job.current:stop()
+    end
+    Job(config):start()
+end
+
+M.sync_current_up = function ()
+    local Config = require("rsync.config")
+    local config = Config.get()
+    if not config then
+        return
+    end
+    local path = vim.fn.expand("%:.")
+    local stat = vim.loop.fs_stat(path)
+    if not stat or stat.type ~= "file" then
+        return
+    end
+    config.src = table.concat({
+        vim.loop.cwd(), path
+    }, Config.sep)
+    config.dest = table.concat({
+        config:get_remote_path(), path
+    }, Config.sep)
+    local Job = require("rsync.job")
+    if Job.current then
+        Job.current:stop()
+    end
     Job(config):start()
 end
 
