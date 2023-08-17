@@ -103,12 +103,12 @@ M.sync_current_down = function ()
     if not stat or stat.type ~= "file" then
         return
     end
-    config.src = table.concat({
-        config:get_remote_path(), path
-    }, Config.sep)
-    config.dest = table.concat({
-        vim.loop.cwd(), path
-    }, Config.sep)
+    local remote_path = config:get_remote_path()
+    if not remote_path then
+        return
+    end
+    config.src = table.concat({ remote_path, path }, Config.sep)
+    config.dest = table.concat({ vim.loop.cwd(), path }, Config.sep)
     local Job = require("rsync.job")
     if Job.current then
         Job.current:stop()
@@ -127,12 +127,12 @@ M.sync_current_up = function ()
     if not stat or stat.type ~= "file" then
         return
     end
-    config.src = table.concat({
-        vim.loop.cwd(), path
-    }, Config.sep)
-    config.dest = table.concat({
-        config:get_remote_path(), path
-    }, Config.sep)
+    local remote_path = config:get_remote_path()
+    if not remote_path then
+        return
+    end
+    config.src = table.concat({ vim.loop.cwd(), path }, Config.sep)
+    config.dest = table.concat({ remote_path, path }, Config.sep)
     local Job = require("rsync.job")
     if Job.current then
         Job.current:stop()
