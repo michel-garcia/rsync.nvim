@@ -77,7 +77,7 @@ end
 M.sync_up = function (delete)
     local Config = require("rsync.config")
     local config = Config.get()
-    if not config or not config.host or not config.user or not config.path then
+    if not config then
         local notifications = require("rsync.notifications")
         notifications.error("invalid config")
         return
