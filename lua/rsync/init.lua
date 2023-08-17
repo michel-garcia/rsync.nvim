@@ -21,15 +21,9 @@ local setup_commands = function ()
         config.delete = opts.args == "delete"
         M.sync_up(config)
     end, { nargs = "?" })
-    vim.api.nvim_create_user_command("SyncStop", function (opts)
-        if M.config.max_concurrent_jobs == 1 then
-            return M.sync_stop_all()
-        end
-        M.sync_stop(opts.args)
-    end, { nargs = "?" })
-    vim.api.nvim_create_user_command("SyncStopAll", function ()
-        M.sync_stop_all()
-    end, {})
+    vim.api.nvim_create_user_command("SyncStop", function ()
+        M.sync_stop()
+    end)
 end
 
 local setup_autocmds = function ()
@@ -69,8 +63,8 @@ M.sync_down = function (config)
     local helpers = require("rsync.helpers")
     config.src = helpers.config_to_remote(config)
     config.dest = vim.loop.cwd() .. helpers.get_separator()
-    local sync = require("rsync.sync")
-    sync.exec(config)
+    local Job = require("rsync.job")
+    Job(config):start()
 end
 
 M.sync_up = function (config)
@@ -82,20 +76,14 @@ M.sync_up = function (config)
     local helpers = require("rsync.helpers")
     config.src = vim.loop.cwd() .. helpers.get_separator()
     config.dest = helpers.config_to_remote(config)
-    local sync = require("rsync.sync")
-    sync.exec(config)
+    local Job = require("rsync.job")
+    Job(config):start()
 end
 
-M.sync_stop = function (job_id)
-    local sync = require("rsync.sync")
-    sync.stop(job_id)
-end
-
-M.sync_stop_all = function ()
-    local sync = require("rsync.sync")
-    local jobs = sync.get_jobs()
-    for _, job in ipairs(jobs) do
-        sync.stop(job.id)
+M.sync_stop = function ()
+    local Job = require("rsync.job")
+    if Job.current then
+        Job.current:stop()
     end
 end
 
