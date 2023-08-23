@@ -3,8 +3,6 @@ local M = {}
 local loaded = false
 
 M.config = {
-    max_concurrent_jobs = 1,
-    on_update = nil,
     sync_up_on_write = false
 }
 
