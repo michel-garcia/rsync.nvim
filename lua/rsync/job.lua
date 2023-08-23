@@ -78,6 +78,7 @@ M.stop = function (self)
 end
 
 M.on_exit = function (self, code)
+    self.code = code
     self.status = self.status == "stopping" and "stopped" or "completed"
     M.current = nil
 end
