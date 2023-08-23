@@ -78,13 +78,11 @@ M.stop = function (self)
 end
 
 M.on_exit = function (self, code)
-    vim.print(code)
     self.status = self.status == "stopping" and "stopped" or "completed"
     M.current = nil
 end
 
 M.on_stdout = function (self, data)
-    vim.print(data)
     self.status = "syncing"
     for _, line in ipairs(data) do
         if line ~= "" then
