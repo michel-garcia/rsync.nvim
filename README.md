@@ -48,7 +48,8 @@ This config file (`.rsync.lua`) will not be uploaded/downloaded as it is automat
 | --- | --- |
 | `SyncDown [delete?]` | Downloads remote files/dirs |
 | `SyncUp [delete?]` | Uploads local files/dirs |
-| `SyncStop [job_id]` | Stops a sync job |
-| `SyncStopAll` | Stops all sync jobs |
+| `SyncCurDown` | Downloads file in current buffer |
+| `SyncCurUp` | Uploads file in current buffer |
+| `SyncStop` | Stops the current sync job (if any) |
 
 Both `SyncDown` and `SyncUp` accept `delete` as an **optional** argument which maps to `--delete` when executing `rsync`. **Use with caution as this could potentially result in data loss**. Refer to the manpages for `rsync` for more information.
