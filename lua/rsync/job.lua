@@ -1,3 +1,5 @@
+local events = require("rsync.events")
+
 local M = {}
 M.current = nil
 M.__index = M
@@ -81,6 +83,10 @@ M.on_exit = function (self, code)
     self.code = code
     self.status = self.status == "stopping" and "stopped" or "completed"
     M.current = nil
+    if code ~= 0 then
+        return events.error(self)
+    end
+    events.complete(self)
 end
 
 M.on_stdout = function (self, data)
@@ -90,6 +96,7 @@ M.on_stdout = function (self, data)
             local percentage = line:match("(%d+)%%")
             if percentage ~= nil then
                 self.percentage = tonumber(percentage)
+                events.progress(self)
             end
         end
     end
