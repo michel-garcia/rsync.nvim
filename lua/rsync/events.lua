@@ -27,7 +27,9 @@ M.error = function (job)
         title = "Rsync",
         replace = prev
     }
-    local message = "error"
+    local Errors = require("rsync.errors")
+    local error = Errors.get_error(job.code)
+    local message = string.format("Rsync error: %s", error)
     vim.notify(message, "error", opts)
 end
 
