@@ -16,11 +16,6 @@ Using [Lazy](https://github.com/folke/lazy.nvim):
     "michel-garcia/rsync.nvim",
     config = function ()
         require("rsync").setup({
-            max_concurrent_jobs = 1,
-            on_update = function (job)
-                -- your custom callback
-                -- job is a table containing: id, status, and percentage
-            end,
             sync_up_on_write = false
         })
     end
@@ -37,7 +32,7 @@ return {
     port = 2222,
     user = "admin", -- required
     pass = "thereisnocowlevel",
-    path = "/home/admin/public_html/", -- required
+    path = "/home/admin/public_html", -- required
     exclude = {
         ".htaccess",
         "uploads/"
