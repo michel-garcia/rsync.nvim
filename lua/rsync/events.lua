@@ -29,6 +29,7 @@ end
 
 M.error = function (job)
     local opts = {
+        timeout = 3500,
         title = "Rsync"
     }
     if prev then
