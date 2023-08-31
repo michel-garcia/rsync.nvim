@@ -58,8 +58,8 @@ M.sync_down = function (delete)
     local Config = require("rsync.config")
     local config = Config.get()
     if not config then
-        local notifications = require("rsync.notifications")
-        notifications.error("invalid config")
+        local opts = { title = "Rsync" }
+        vim.notify("Invalid config", "error", opts)
         return
     end
     config.src = config:get_remote_path() .. Config.sep
@@ -76,8 +76,8 @@ M.sync_up = function (delete)
     local Config = require("rsync.config")
     local config = Config.get()
     if not config then
-        local notifications = require("rsync.notifications")
-        notifications.error("invalid config")
+        local opts = { title = "Rsync" }
+        vim.notify("Invalid config", "error", opts)
         return
     end
     config.src = vim.loop.cwd() .. Config.sep
