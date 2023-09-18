@@ -23,8 +23,7 @@ end
 M.prepare = function (self)
     local opts = {
         "--archive",
-        "--info=progress2",
-        "--verbose"
+        "--info=progress2"
     }
     if self.config.delete then
         table.insert(opts, "--delete")
