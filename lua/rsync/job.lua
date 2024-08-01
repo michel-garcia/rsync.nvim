@@ -1,104 +1,171 @@
-local events = require("rsync.events")
+local JobManager = require("rsync.job_manager")
 
 local M = {}
-M.current = nil
 M.__index = M
 
-M.id = 0
-M.config = {
-    exclude = {
-        ".rsync.*"
-    },
-    include = {}
+M.src = nil
+M.dest = nil
+M.opts = {
+    delete = false,
+    exclude = {},
+    include = {},
+    pass = nil,
+    port = nil
 }
-M.status = "starting"
-M.percentage = 0
+M.exited = false
+M.failed = false
+M.notification = nil
+M.spinner = {
+    frames = {
+	    "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷",
+    },
+    index = 0
+}
 
-M.new = function (config)
+M.new = function (src, dest, opts)
     local self = setmetatable({}, M)
-    self.config = vim.tbl_deep_extend("force", M.config, config)
+    vim.validate({
+        src = { src, "string" },
+        dest = { dest, "string" },
+        opts = { opts, "table" },
+        delete = { opts.delete or false, "boolean" },
+        exclude = { opts.exclude or {}, "table" },
+        include = { opts.include or {}, "table" },
+        pass = { opts.pass or nil, "string" },
+        port = { opts.port or 0, "number" }
+    })
+    self.src = src
+    self.dest = dest
+    self.opts = vim.tbl_deep_extend("force", M.opts, opts or M.opts)
     return self
 end
 
-M.prepare = function (self)
+M.get_cmd = function (self)
     local opts = {
         "--archive",
-        "--info=progress2"
+        "--exclude .rsync.lua",
+        "--info=progress2",
+        "--mkpath",
+        "--no-inc-recursive"
     }
-    if self.config.delete then
+    if self.opts.delete then
         table.insert(opts, "--delete")
     end
-    for _, pattern in ipairs(self.config.exclude) do
-        local opt = string.format("--exclude %s", pattern)
+    for _, pattern in ipairs(self.opts.exclude) do
+        local opt = string.format("--exclude %s", vim.fn.escape(pattern, " \\"))
         table.insert(opts, opt)
     end
-    for _, pattern in ipairs(self.config.include) do
-        local opt = string.format("--include %s", pattern)
+    for _, pattern in ipairs(self.opts.include) do
+        local opt = string.format("--include %s", vim.fn.escape(pattern, " \\"))
         table.insert(opts, opt)
     end
-    if self.config.port then
-        local opt = string.format("--rsh='ssh -p %s'", self.config.port)
+    if self.opts.port then
+        local opt = string.format("--rsh='ssh -p %s'", self.opts.port)
         table.insert(opts, opt)
     end
     local args = table.concat(opts, " ")
-    self.cmd = string.format(
-        "rsync %s %s %s", args, self.config.src, self.config.dest
-    )
-    if self.config.pass then
-        self.cmd = string.format(
-            "sshpass -p '%s' %s", self.config.pass, self.cmd
-        )
+    local cmd = string.format("rsync %s %s %s", args, self.src, self.dest)
+    if not self.opts.pass then
+        return cmd
     end
-    return true
+    return string.format("sshpass -p '%s' %s", self.opts.pass, cmd)
 end
 
 M.start = function (self)
-    local opts = {
+    self.notification = vim.notify("Starting...", vim.log.levels.INFO, {
+        timeout = false,
+        title = "Rsync"
+    })
+    self:update()
+    local cmd = self:get_cmd()
+    self.exited = false
+    self.failed = false
+    self.id = vim.fn.jobstart(cmd, {
         capture_stdout = true,
-        on_exit = function (_, code)
-            self:on_exit(code)
+        on_stderr = function (_, data)
+            self.failed = true
+            self:on_stderr(data)
         end,
         on_stdout = function (_, data)
             self:on_stdout(data)
+        end,
+        on_exit = function (_, code)
+            self.exited = true
+            self:on_exit(code)
         end
-    }
-    if not self:prepare() then
-        return false
+    })
+    JobManager.add(self)
+    local ok = self.id > 0
+    if not ok then
+        self.failed = true
+        vim.notify("Unable to start job.", vim.log.levels.ERROR, {
+            replace = self.notification,
+            timeout = 3500,
+            title = "Rsync"
+        })
     end
-    self.id = vim.fn.jobstart(self.cmd, opts)
-    local active = self.id > 0
-    if active then
-        M.current = self
-    end
-    return active
+    return ok
 end
 
 M.stop = function (self)
-    self.status = "stopping"
-    return vim.fn.jobstop(self.id)
+    vim.fn.jobstop(self.id)
 end
 
-M.on_exit = function (self, code)
-    self.code = code
-    self.status = self.status == "stopping" and "stopped" or "completed"
-    M.current = nil
-    if code ~= 0 then
-        return events.error(self)
+M.on_stderr = function (self, data)
+    if self.exited then
+        return
     end
-    events.complete(self)
+    local content = table.concat(data)
+    if content:len() == 0 then
+        return
+    end
+    self.notification = vim.notify(content, vim.log.levels.ERROR, {
+        icon = "",
+        replace = self.notification,
+        timeout = 7500,
+        title = "Rsync"
+    })
 end
 
 M.on_stdout = function (self, data)
-    self.status = "syncing"
-    for _, line in ipairs(data) do
-        if line ~= "" then
-            local percentage = line:match("(%d+)%%")
-            if percentage ~= nil then
-                self.percentage = tonumber(percentage)
-                events.progress(self)
-            end
-        end
+    if self.exited then
+        return
     end
+    local content = table.concat(data)
+    if content:len() == 0 then
+        return
+    end
+    self.percentage = content:match("(%d+)%%")
+end
+
+M.on_exit = function (self, code)
+    JobManager.remove(self.id)
+    if code ~= 0 then
+        return
+    end
+    self.notification = vim.notify("Sync complete!", vim.log.levels.INFO, {
+        icon = "",
+        replace = self.notification,
+        timeout = 3500,
+        title = "Rsync"
+    })
+end
+
+M.update = function (self)
+    if self.exited or self.failed then
+        return
+    end
+    self.spinner.index = (self.spinner.index + 1) % #self.spinner.frames
+    local message = self.percentage and string.format("Syncing: %s%%", self.percentage) or "Starting..."
+    self.notification = vim.notify(message, vim.log.levels.INFO, {
+        icon = self.spinner.frames[self.spinner.index],
+        replace = self.notification,
+        timeout = false,
+        title = "Rsync"
+    })
+    vim.defer_fn(function ()
+        self:update()
+    end, 100)
 end
 
 return setmetatable(M, {

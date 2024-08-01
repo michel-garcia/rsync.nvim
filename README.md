@@ -7,7 +7,7 @@ An rsync wrapper for Neovim fully written in Lua. This is currently a WIP, more 
 Dependencies:
 
 - [rsync](https://github.com/WayneD/rsync)
-- [sshpass](https://sourceforge.net/projects/sshpass/) - required only if using remote password
+- [sshpass](https://sourceforge.net/projects/sshpass/) - required if using a password
 
 Using [Lazy](https://github.com/folke/lazy.nvim):
 
@@ -46,10 +46,10 @@ This config file (`.rsync.lua`) will not be uploaded/downloaded as it is automat
 
 | Command | Description |
 | --- | --- |
-| `SyncDown [delete?]` | Downloads remote files/dirs |
-| `SyncUp [delete?]` | Uploads local files/dirs |
-| `SyncCurDown` | Downloads file in current buffer |
-| `SyncCurUp` | Uploads file in current buffer |
-| `SyncStop` | Stops the current sync job (if any) |
+| `SyncDown [current?] [delete?]` | Downloads remote files/dirs |
+| `SyncUp [current?] [delete?]` | Uploads local files/dirs |
+| `SyncStop` | Stops all active jobs (if any) |
 
 Both `SyncDown` and `SyncUp` accept `delete` as an **optional** argument which maps to `--delete` when executing `rsync`. **Use with caution as this could potentially result in data loss**. Refer to the manpages for `rsync` for more information.
+
+Similarly, passing `current` to either `SyncDown` or `SyncUp` will make the command sync the file in the current buffer only.
