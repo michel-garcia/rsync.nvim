@@ -29,6 +29,7 @@ M.new = function (src, dest, opts)
         dest = { dest, "string" },
         opts = { opts, "table" },
         delete = { opts.delete or false, "boolean" },
+        disable_mkpath = { opts.disable_mkpath or false, "boolean" },
         exclude = { opts.exclude or {}, "table" },
         include = { opts.include or {}, "table" },
         pass = { opts.pass or nil, "string" },
@@ -45,9 +46,11 @@ M.get_cmd = function (self)
         "--archive",
         "--exclude .rsync.lua",
         "--info=progress2",
-        "--mkpath",
         "--no-inc-recursive"
     }
+    if not self.opts.disable_mkpath then
+        table.insert(opts, "--mkpath")
+    end
     if self.opts.delete then
         table.insert(opts, "--delete")
     end

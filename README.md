@@ -36,7 +36,8 @@ return {
     exclude = {
         ".htaccess",
         "uploads/"
-    }
+    },
+    disable_mkpath = false -- set to true for compatibility with rsync v3.2.3 and lower
 }
 ```
 

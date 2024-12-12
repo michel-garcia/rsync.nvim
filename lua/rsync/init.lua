@@ -135,6 +135,7 @@ M.sync = function (src, dest, config, delete)
     local Job = require("rsync.job")
     local job = Job(src, dest, {
         delete = delete,
+        disable_mkpath = config.disable_mkpath,
         exclude = config.exclude,
         include = config.include,
         pass = config.pass,
@@ -177,7 +178,8 @@ M.get_config = function ()
         port = { config.port or 0, "number" },
         path = { config.path, "string" },
         exclude = { config.exclude or {}, "table" },
-        include = { config.include or {}, "table" }
+        include = { config.include or {}, "table" },
+        disable_mkpath = { config.disable_mkpath or false, "boolean" }
     })
     return config
 end
