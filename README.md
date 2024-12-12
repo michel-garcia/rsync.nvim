@@ -53,4 +53,4 @@ This config file (`.rsync.lua`) will not be uploaded/downloaded as it is automat
 
 Both `SyncDown` and `SyncUp` accept `delete` as an **optional** argument which maps to `--delete` when executing `rsync`. **Use with caution as this could potentially result in data loss**. Refer to the manpages for `rsync` for more information.
 
-Similarly, passing `current` to either `SyncDown` or `SyncUp` will make the command sync the file in the current buffer only.
+Similarly, passing `current` to either `SyncDown` or `SyncUp` will sync the file in the current buffer only.
