@@ -9,6 +9,7 @@ M.setup = function (config)
     end
     loaded = true
     M.config = vim.tbl_deep_extend("force", {
+        on_update = nil,
         sync_up_on_write = false
     }, config or {})
     M.setup_commands()
@@ -138,6 +139,7 @@ M.sync = function (src, dest, config, delete)
         disable_mkpath = config.disable_mkpath,
         exclude = config.exclude,
         include = config.include,
+        on_update = M.config.on_update,
         pass = config.pass,
         port = config.port
     })
