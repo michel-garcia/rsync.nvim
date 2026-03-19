@@ -3,21 +3,21 @@ M.config = {}
 
 local loaded = false
 
-M.setup = function (config)
+M.setup = function(config)
     if loaded then
         return
     end
     loaded = true
     M.config = vim.tbl_deep_extend("force", {
         on_update = nil,
-        sync_up_on_write = false
+        sync_up_on_write = false,
     }, config or {})
     M.setup_commands()
     M.setup_autocmds()
 end
 
-M.setup_commands = function ()
-    vim.api.nvim_create_user_command("SyncDown", function (opts)
+M.setup_commands = function()
+    vim.api.nvim_create_user_command("SyncDown", function(opts)
         if vim.fn.empty(opts.args) == 1 then
             M.sync_down(false)
             return
@@ -29,7 +29,7 @@ M.setup_commands = function ()
             return
         end
     end, { nargs = "?" })
-    vim.api.nvim_create_user_command("SyncUp", function (opts)
+    vim.api.nvim_create_user_command("SyncUp", function(opts)
         if vim.fn.empty(opts.args) == 1 then
             M.sync_up(false)
             return
@@ -41,26 +41,26 @@ M.setup_commands = function ()
             return
         end
     end, { nargs = "?" })
-    vim.api.nvim_create_user_command("SyncStop", function ()
+    vim.api.nvim_create_user_command("SyncStop", function()
         M.sync_stop()
     end, {})
 end
 
-M.setup_autocmds = function ()
+M.setup_autocmds = function()
     local group = vim.api.nvim_create_augroup("RsyncAutocmds", {
-        clear = true
+        clear = true,
     })
     vim.api.nvim_create_autocmd("BufWritePost", {
-        callback = function ()
+        callback = function()
             if M.config.sync_up_on_write then
                 M.sync_current_up()
             end
         end,
-        group = group
+        group = group,
     })
 end
 
-M.sync_down = function (delete)
+M.sync_down = function(delete)
     local config = M.get_config()
     if not config then
         return
@@ -70,7 +70,7 @@ M.sync_down = function (delete)
     M.sync(src, dest, config, delete)
 end
 
-M.sync_up = function (delete)
+M.sync_up = function(delete)
     local config = M.get_config()
     if not config then
         return
@@ -80,7 +80,7 @@ M.sync_up = function (delete)
     M.sync(src, dest, config, delete)
 end
 
-M.sync_current_down = function ()
+M.sync_current_down = function()
     local config = M.get_config()
     if not config then
         return
@@ -106,7 +106,7 @@ M.sync_current_down = function ()
     M.sync(src, dest, config)
 end
 
-M.sync_current_up = function ()
+M.sync_current_up = function()
     local config = M.get_config()
     if not config then
         return
@@ -132,7 +132,7 @@ M.sync_current_up = function ()
     M.sync(src, dest, config)
 end
 
-M.sync = function (src, dest, config, delete)
+M.sync = function(src, dest, config, delete)
     local Job = require("rsync.job")
     local job = Job(src, dest, {
         delete = delete,
@@ -141,19 +141,19 @@ M.sync = function (src, dest, config, delete)
         include = config.include,
         on_update = M.config.on_update,
         pass = config.pass,
-        port = config.port
+        port = config.port,
     })
     job:start()
 end
 
-M.sync_stop = function ()
+M.sync_stop = function()
     local JobManager = require("rsync.job_manager")
     JobManager.stop_all()
 end
 
-M.get_root = function ()
+M.get_root = function()
     local path = vim.fs.root(0, {
-        ".rsync.lua"
+        ".rsync.lua",
     })
     if not path then
         return
@@ -161,7 +161,7 @@ M.get_root = function ()
     return string.format("%s/", path)
 end
 
-M.get_config = function ()
+M.get_config = function()
     local root = M.get_root()
     if not root then
         return
@@ -174,19 +174,43 @@ M.get_config = function ()
     end
     config.path = vim.fs.normalize(config.path)
     vim.validate({
-        host = { config.host, "string" },
-        user = { config.user, "string" },
-        pass = { config.pass or nil, "string" },
-        port = { config.port or 0, "number" },
-        path = { config.path, "string" },
-        exclude = { config.exclude or {}, "table" },
-        include = { config.include or {}, "table" },
-        disable_mkpath = { config.disable_mkpath or false, "boolean" }
+        host = {
+            config.host,
+            "string",
+        },
+        user = {
+            config.user,
+            "string",
+        },
+        pass = {
+            config.pass or nil,
+            "string",
+        },
+        port = {
+            config.port or 0,
+            "number",
+        },
+        path = {
+            config.path,
+            "string",
+        },
+        exclude = {
+            config.exclude or {},
+            "table",
+        },
+        include = {
+            config.include or {},
+            "table",
+        },
+        disable_mkpath = {
+            config.disable_mkpath or false,
+            "boolean",
+        },
     })
     return config
 end
 
-M.get_remote_path = function (config)
+M.get_remote_path = function(config)
     return string.format("%s@%s:%s/", config.user, config.host, config.path)
 end
 

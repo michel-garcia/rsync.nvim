@@ -21,16 +21,46 @@ M.last_error_message = nil
 M.new = function(src, dest, opts)
     local self = setmetatable({}, M)
     vim.validate({
-        src = { src, "string" },
-        dest = { dest, "string" },
-        opts = { opts, "table" },
-        delete = { opts.delete or false, "boolean" },
-        disable_mkpath = { opts.disable_mkpath or false, "boolean" },
-        exclude = { opts.exclude or {}, "table" },
-        include = { opts.include or {}, "table" },
-        on_update = { opts.on_update, "function" },
-        pass = { opts.pass or nil, "string" },
-        port = { opts.port or 0, "number" },
+        src = {
+            src,
+            "string",
+        },
+        dest = {
+            dest,
+            "string",
+        },
+        opts = {
+            opts,
+            "table",
+        },
+        delete = {
+            opts.delete or false,
+            "boolean",
+        },
+        disable_mkpath = {
+            opts.disable_mkpath or false,
+            "boolean",
+        },
+        exclude = {
+            opts.exclude or {},
+            "table",
+        },
+        include = {
+            opts.include or {},
+            "table",
+        },
+        on_update = {
+            opts.on_update,
+            "function",
+        },
+        pass = {
+            opts.pass or nil,
+            "string",
+        },
+        port = {
+            opts.port or 0,
+            "number",
+        },
     })
     self.src = src
     self.dest = dest
@@ -142,11 +172,11 @@ end
 M.update = function(self)
     pcall(self.opts.on_update, {
         job = self,
-        level = not self.failed and vim.log.levels.INFO or vim.log.levels.ERROR
+        level = not self.failed and vim.log.levels.INFO or vim.log.levels.ERROR,
     })
 end
 
-M.status = function (self)
+M.status = function(self)
     if self.completed then
         return "Sync complete!"
     end
