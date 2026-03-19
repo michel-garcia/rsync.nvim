@@ -184,7 +184,10 @@ M.get_config = function()
         },
         pass = {
             config.pass or nil,
-            "string",
+            {
+                "string",
+                "nil",
+            },
         },
         port = {
             config.port or 0,

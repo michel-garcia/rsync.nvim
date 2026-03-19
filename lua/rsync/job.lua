@@ -55,7 +55,10 @@ M.new = function(src, dest, opts)
         },
         pass = {
             opts.pass or nil,
-            "string",
+            {
+                "string",
+                "nil",
+            },
         },
         port = {
             opts.port or 0,
