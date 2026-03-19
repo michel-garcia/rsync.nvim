@@ -1,22 +1,14 @@
+local Job = require("rsync.job")
+local Manager = require("rsync.manager")
+
 local M = {}
-M.config = {}
 
-local loaded = false
+M.opts = {
+    on_update = nil,
+    sync_up_on_write = false,
+}
 
-M.setup = function(config)
-    if loaded then
-        return
-    end
-    loaded = true
-    M.config = vim.tbl_deep_extend("force", {
-        on_update = nil,
-        sync_up_on_write = false,
-    }, config or {})
-    M.setup_commands()
-    M.setup_autocmds()
-end
-
-M.setup_commands = function()
+local setup_commands = function()
     vim.api.nvim_create_user_command("SyncDown", function(opts)
         if vim.fn.empty(opts.args) == 1 then
             M.sync_down(false)
@@ -46,18 +38,24 @@ M.setup_commands = function()
     end, {})
 end
 
-M.setup_autocmds = function()
+local setup_autocmds = function()
     local group = vim.api.nvim_create_augroup("RsyncAutocmds", {
         clear = true,
     })
     vim.api.nvim_create_autocmd("BufWritePost", {
         callback = function()
-            if M.config.sync_up_on_write then
+            if M.opts.sync_up_on_write then
                 M.sync_current_up()
             end
         end,
         group = group,
     })
+end
+
+M.setup = function(opts)
+    M.opts = vim.tbl_deep_extend("force", M.opts, opts or {})
+    setup_commands()
+    setup_autocmds()
 end
 
 M.sync_down = function(delete)
@@ -133,13 +131,12 @@ M.sync_current_up = function()
 end
 
 M.sync = function(src, dest, config, delete)
-    local Job = require("rsync.job")
     local job = Job(src, dest, {
         delete = delete,
         disable_mkpath = config.disable_mkpath,
         exclude = config.exclude,
         include = config.include,
-        on_update = M.config.on_update,
+        on_update = M.opts.on_update,
         pass = config.pass,
         port = config.port,
     })
@@ -147,8 +144,7 @@ M.sync = function(src, dest, config, delete)
 end
 
 M.sync_stop = function()
-    local JobManager = require("rsync.job_manager")
-    JobManager.stop_all()
+    Manager.stop_all()
 end
 
 M.get_root = function()

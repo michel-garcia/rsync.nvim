@@ -1,4 +1,4 @@
-local JobManager = require("rsync.job_manager")
+local Manager = require("rsync.manager")
 
 local M = {}
 M.__index = M
@@ -124,7 +124,7 @@ M.start = function(self)
             self:on_exit(code)
         end,
     })
-    JobManager.add(self)
+    Manager.add(self)
     local ok = self.id > 0
     if not ok then
         self.failed = true
@@ -164,7 +164,7 @@ M.on_stdout = function(self, data)
 end
 
 M.on_exit = function(self, code)
-    JobManager.remove(self.id)
+    Manager.remove(self.id)
     if code ~= 0 then
         return
     end
